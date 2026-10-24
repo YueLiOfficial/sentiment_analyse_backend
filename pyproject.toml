@@ -1,0 +1,120 @@
+# ==============================================================================
+# 1. 项目基础元数据
+# ==============================================================================
+[project]
+name = "sentiment_anlyse"
+version = "1.1.0"
+description = "尚舆分析平台 — 多专家圆桌讨论的 AI 深度舆情研究平台"
+requires-python = ">=3.11,<3.12"
+
+# ------------------------------------------------------------------------------
+# 项目核心依赖
+# 运行 `uv sync` 时默认安装。包含 Web 框架、数据库、LLM 及 RAG 基础组件
+# ------------------------------------------------------------------------------
+dependencies = [
+    # Web 框架与 ASGI 服务驱动
+    "fastapi>=0.121.1",
+    "uvicorn>=0.37.0",
+    # 配置管理与高阶日志记录
+    "pydantic>=2.12.0",
+    "pydantic-settings>=2.11.0",
+    "python-dotenv>=1.1.1",
+    "loguru>=0.7.2",
+    # 大语言模型 (LLM) 与 AI Agent 编排框架
+    "openai>=1.109.1",
+    "langgraph>=1.0.4",
+    # 数据库驱动与 ORM (舆情库异步/同步访问)
+    "sqlalchemy>=2.0.43",
+    "aiomysql>=0.3.2",
+    "pymysql>=1.1.2",
+    # 联网搜索与 HTTP 网络请求客户端
+    "tavily-python>=0.7.24",
+    "requests>=2.32.5",
+    "httpx>=0.28.1",
+    # 报告渲染引擎、加密与 RAG/分词工具
+    "mistune>=3.1",             # Markdown 文本解析与渲染
+    "cryptography>=48.0.1",     # 安全与数据加密
+    "langchain-openai>=1.3.0",  # LangChain OpenAI 封装扩展
+    "langchain>=1.3.9",         # 大模型链式调用基础库
+    "sse-starlette>=3.4.4",     # Server-Sent Events (用于打字机式流式输出)
+    "jieba>=0.42.1",            # 中文分词工具
+    "pymilvus[model]>=2.6.0",   # Milvus 向量数据库客户端 (含 Embedding 模型扩展)
+    "flagembedding>=1.4.2",
+    "modelscope>=1.39.1",
+]
+
+# ==============================================================================
+# 2. 可选扩展依赖组
+# 按需安装的扩展模块，可通过 `uv sync --extra` 单独安装
+# ==============================================================================
+[project.optional-dependencies]
+# 开发测试依赖组 (`uv sync --extra dev`)
+dev = [
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
+]
+
+# 本地机器学习/深度学习依赖组 (`uv sync --extra ml`)
+# 用于本地向量化 (Embedding)、重排序 (Rerank) 或本地模型推理
+ml = [
+    "torch>=2.9.0",                # PyTorch 深度学习计算框架
+    "transformers>=4.57.1",        # Hugging Face 模型加载工具
+    "scikit-learn>=1.7.2",         # 传统机器学习与文本处理算法
+    "sentence-transformers>=5.1.2", # 文本向量化 (Embedding) 专用库
+    "FlagEmbedding>=1.3.5",        # 智源 BGE 向量与 Rerank 重排序模型库
+]
+
+# ==============================================================================
+# 3. 构建系统配置
+# 声明使用 Hatchling 作为项目构建工具，用于项目打包和本地可编辑安装
+#它的作用只有：让 Python 能识别你自己写的项目内部代码包。
+#👉 你现在 IDE 能跑，是 IDE 偷偷帮你把项目目录加到搜索路径；
+#👉 如果没有这个配置，纯终端命令行跑，跨文件导入自己的代码会报找不到模块；
+#👉 如果你以后要打包、部署到服务器，就必须要有。
+# ==============================================================================
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+# ==============================================================================
+# 4. UV 包管理器镜像源配置
+# ==============================================================================
+# 默认包下载源：使用清华大学镜像站以加速国内网络下的依赖下载
+[[tool.uv.index]]
+url = "https://pypi.tuna.tsinghua.edu.cn/simple"
+default = true
+
+# ==============================================================================
+# 5. Hatch 源码包识别范围
+# 指定将根目录下的 `app` 和 `engines` 文件夹作为 Python 包进行构建和注册
+# 使得项目内可直接使用 `import app` 和 `import engines` 跨目录导入
+# ==============================================================================
+[tool.hatch.build.targets.wheel]
+packages = ["app", "engines"]
+# 什么叫「跨目录导入」
+#举你的真实目录结构：
+#plaintext
+#项目/          # 项目根
+#├─ app/
+#│  └─ router.py
+#├─ engines/
+#│  └─ llm_engine.py
+#└─ main.py
+#场景 1：main.py 里面要使用 app/router.py
+#from app.router import router
+#✅ 这就是跨目录导入：main.py 在根目录，要去读 app 文件夹里面的代码。
+#情况 A：没有配置 packages = ["app","engines"]
+#IDE（PyCharm/VSCode）：它很聪明，自动把项目根目录加到搜索路径，所以你写 from app.router import router IDE 里面运行不报错。
+#但是你在终端用 uv run python main.py 执行：
+#ModuleNotFoundError: No module named 'app'
+#👉 原因：Python 环境不知道 app 这个文件夹是一个可以被 import 的包。
+#哪怕文件实实在在存在磁盘上，Python 不认。
+#情况 B：配置了 packages = ["app","engines"]
+#执行 uv sync（可编辑安装）之后：
+#Python 环境记住：app、engines 是合法包。
+#不管你在哪一个文件里，不管在哪个目录下，都可以写：
+#from app.router import router
+#from engines.llm_engine import LlmEngine
+#终端运行、IDE 运行全部正常，不会报找不到模块。
+
+# uv sync --python=3.11.14 --all-extras
