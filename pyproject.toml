@@ -41,6 +41,7 @@ dependencies = [
     "pymilvus[model]>=2.6.0",   # Milvus 向量数据库客户端 (含 Embedding 模型扩展)
     "flagembedding>=1.4.2",
     "modelscope>=1.39.1",
+    "langchain-deepseek>=1.1.1",
 ]
 
 # ==============================================================================
