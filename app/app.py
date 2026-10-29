@@ -2,6 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.routers.rest.config import config_router
+from app.routers.rest.research import research_router
 from app.exceptions.exception_handler import register_exception_handlers
 
 app = FastAPI()
@@ -21,3 +22,4 @@ app.add_middleware(
 register_exception_handlers(app)
 
 app.include_router(config_router)
+app.include_router(research_router)
