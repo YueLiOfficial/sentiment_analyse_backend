@@ -36,7 +36,7 @@ from engines.common.research_graph_runtime import (
 from engines.contracts.agent_rules import ROLE_KEY
 from engines.insight_agent.graph import build_graph
 
-async def insight_agent_handler(
+async def invoke_insight_agent(
     task_id: str,
     query: str,
     role: ROLE_KEY,

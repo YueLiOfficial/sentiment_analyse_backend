@@ -24,18 +24,41 @@
 上游：AgentReportGenerationNode
 下游：Graph END，任务结束
 """
-from typing import Any, Dict
+from typing import Any
 
+from loguru import logger
+
+# 通用报告保存工具，多个Agent共用
+from engines.common.reports import save_report
 from engines.common.research_graph_runtime import ResearchNode
+from engines.contracts.agent_rules import ROLE_INFOS
 from engines.contracts.research_graph_state import ResearchGraphState
 
 
 class ReportPersistenceNode(ResearchNode):
-    """将完整报告、原始证据快照写入磁盘；仅IO持久化，不修改报告业务内容；Insight/Media共用。"""
+    """将 Agent 独立报告落盘并注册到研究运行。"""
 
-    async def __call__( # type: ignore
-        self,
-        state: ResearchGraphState[Any],
-    ) -> Dict[str, Any]:
-        # 业务实现下一章补齐；当前仅占位pass
+    async def __call__(self, state: ResearchGraphState[Any]) -> dict[str, Any]: # type: ignore
+        """
+        LangGraph节点入口，报告持久化落盘
+        :param state: 研究图状态，需要包含role、query、final_report
+        :return: 空字典，本节点不更新graph状态，只做文件IO副作用
+        """
+        # 获取角色信息，仅用于日志打印，不参与文件逻辑
+        role = state['role']
+        role_info = ROLE_INFOS[role]
+        logger.info(f"{role_info.agent_name} 开始进行独立报告落盘")
+
+        # 读取上游节点生成完毕的完整markdown报告文本
+        final_report = state["final_report"]
+
+        # 调用公共保存工具：输出目录来自运行上下文，文件名使用query，传入报告文本
+        md_path = save_report(
+            self.context.output_dir,
+            f"report.md",
+            final_report,
+        )
+
+        logger.info(f"{role_info.agent_name} 独立报告落盘完成：{md_path}")
+        # 节点约定：无状态变更，返回空字典
         return {}
