@@ -1,55 +1,57 @@
+# engines/media_agent/agent.py
+"""
+公域MediaAgent对外入口handler
+对齐私域invoke_insight_agent；组装context，build_graph，调用公共handle_research_graph驱动图执行。
+"""
 import asyncio
-from typing import Optional
+
 from engines.common.llm import LLMClient
-from engines.common.reports import save_report
+from engines.common.reports import get_output_dir
+from engines.common.research_graph_runtime import ResearchRunContext, ProgressCallback, handle_research_graph
+from engines.contracts.agent_rules import ROLE_KEY
+from engines.media_agent.graph import build_graph
 
 
 async def invoke_media_agent(
-        run_id: str,
+        task_id: str,
         query: str,
-        role: str,
+        role: ROLE_KEY,
         llm_client: LLMClient,
         output_dir: str,
-        progress_callback: Optional = None # type: ignore
-) -> None:
+        progress_callback: ProgressCallback | None = None
+):
     """
-    Media智能体：公域网络数据检索
-    统一AgentHandler入口，编排器会调用该函数
-
-    :param run_id: 全局任务task_id
-    :param query: 用户原始研究query
-    :param role: 角色key media
-    :param llm_client: media角色模型客户端实例
-    :param output_dir: 该角色产物目录，RUNTIME_DIR/{task_id}/media
-    :param progress_callback: 进度上报回调（预留，当前demo暂不使用）
+    公域舆情智能体统一对外调用入口
+    :param role: 角色标识，固定media
+    :param query: 用户研究分析主题
+    :param task_id: 任务全局唯一ID
+    :param llm_client: 已经实例化完成的media角色LLM客户端
+    :param output_dir: 当前任务报告输出目录
+    :param progress_callback: 进度回调，上层业务可传入接收实时进度；可以为None
     """
-
-    # ========== 模拟业务：模拟公域搜索、大模型分析耗时，实际业务删除sleep ==========
-    await asyncio.sleep(3.0)
-
-    # 【可选：打开下面代码模拟Agent异常，测试results接口key缺失场景】
-    # raise RuntimeError("模拟MediaAgent执行异常，不会生成report.md")
-
-    # 模拟生成公域分析markdown报告
-    demo_md = f"""# 公域检索分析报告【模拟占位】
-    > task_id: `{run_id}`
-    > 研究主题：**{query}**
-    > 角色：{role}
-
-    ## 1. 公域证据概览
-    - 模拟调用外部搜索API抓取网页、新闻资讯
-    - 模拟获取18条公域相关网页证据
-
-    ## 2. 维度分析
-    1. 全网舆情走势：模拟公域媒体舆情统计
-    2. 重点媒体观点汇总：模拟主流媒体立场梳理
-    3. 热点事件溯源：模拟公域事件时间线还原
-
-    > 注意：本文件为Demo模拟产物；后续接入真实检索与LLM之后替换全部内容。
-    """
-    # 调用公共IO工具，写入report.md到output_dir
-    save_report(
+    # 构造不可序列化运行上下文，注入给Graph全部节点；禁止存入LangGraph State
+    context = ResearchRunContext(
+        task_id=task_id,
+        role=role,
+        llm_client=llm_client,
         output_dir=output_dir,
-        filename="report.md",
-        content=demo_md
+        progress_callback=progress_callback,
     )
+    # build_graph传入context，实例化全部业务节点；调用公共统一执行入口
+    await handle_research_graph(context, build_graph(context), query)
+
+
+async def main_test():
+    """本地main调试入口，直接运行完整公域链路；真实调用LLM、真实调用Anspire搜索"""
+    await invoke_media_agent(
+        role="media",
+        query="宁德时代为啥这么跌?",
+        task_id="media‑demo‑001",
+        llm_client=LLMClient.from_role("media"),
+        output_dir=get_output_dir(task_id="media‑demo‑001", role="media"),
+        progress_callback=None
+    )
+
+
+if __name__ == '__main__':
+    asyncio.run(main_test())

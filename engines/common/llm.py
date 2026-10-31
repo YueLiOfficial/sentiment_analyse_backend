@@ -7,7 +7,7 @@ from langchain_core.messages import BaseMessage, SystemMessage, HumanMessage
 from pydantic import BaseModel
 
 from engines.contracts.agent_rules import ROLE_KEY, ROLE_INFOS, RoleInfo
-from engines.contracts.retrier import with_retry
+from engines.common.retrier import with_retry
 from engines.contracts.settings import get_settings
 
 # 泛型约束：结构化输出的返回对象必须继承自Pydantic BaseModel
