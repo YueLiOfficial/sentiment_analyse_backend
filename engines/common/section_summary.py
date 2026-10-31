@@ -38,6 +38,7 @@ from typing import Any
 from langchain_core.prompts import PromptTemplate
 from loguru import logger
 
+from engines.common.events import publish_section_ready
 from engines.common.research_graph_runtime import ResearchNode
 from engines.contracts.agent_rules import ROLE_INFOS
 from engines.contracts.evidence import EvidenceRecord
@@ -95,8 +96,8 @@ class BaseSectionSummaryNode(ResearchNode):
         # [{key,title,body},{key,title,body=None}]
         sections[cursor] = section
 
-        # TODO 发布摘要生成事件给HostAgent，做章节研判（事件总线预留点）
         # 一个章节总结完毕 -> HostAgent做章节研判
+        publish_section_ready(state, section)
 
         logger.info(f"{role_info.agent_name} 按游标取章节证据包生成章节正文完成。")
         # 返回：更新后的sections，游标+1，下一轮处理下一章
