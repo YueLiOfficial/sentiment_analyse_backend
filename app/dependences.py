@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.services.config.config_service import ConfigService
+from app.services.report.report_service import ReportService
 from app.services.research.research_service import ResearchService
 
 
@@ -30,3 +31,12 @@ def get_host_service() -> HostService:
     return _host_service
 
 HostServiceDep = Annotated[HostService, Depends(get_host_service)]
+
+_report_service = ReportService()
+
+
+def get_report_service() -> ReportService:
+    """提供全局报告生成服务单例"""
+    return _report_service
+
+ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
