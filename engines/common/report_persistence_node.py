@@ -48,7 +48,7 @@ class ReportPersistenceNode(ResearchNode):
         role = state['role']
         role_info = ROLE_INFOS[role]
         logger.info(f"{role_info.agent_name} 开始进行独立报告落盘")
-
+        self.context.report_progress("completed", f"{role_info.agent_name} 开始保存独立报告", 90)
         # 读取上游节点生成完毕的完整markdown报告文本
         final_report = state["final_report"]
 
@@ -60,5 +60,6 @@ class ReportPersistenceNode(ResearchNode):
         )
 
         logger.info(f"{role_info.agent_name} 独立报告落盘完成：{md_path}")
+        self.context.report_progress("completed", f"{role_info.agent_name} 独立报告保存完成", 100)
         # 节点约定：无状态变更，返回空字典
         return {}

@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Callable, Awaitable
 
 from engines.common.llm import LLMClient
+from engines.common.research_graph_runtime import ProgressUpdate
 from engines.common.research_tasks import research_task_manager
 from engines.common.reports import get_output_dir
 from engines.contracts.agent_rules import ROLE_KEY
@@ -9,6 +10,13 @@ from engines.insight_agent.agent import invoke_insight_agent
 from engines.media_agent.agent import invoke_media_agent
 from engines.common.logger import route_logs_by_role
 from loguru import logger
+from engines.common.events import (
+    RoleErrorEvent,
+    publish_role_error,
+    publish_role_result,
+    RoleResultEvent,
+    publish_role_progress, RoleProgressEvent
+)
 
 # 代表一个agent-handler函数
 # Callable[[入参类型列表], 返回值类型]：Python typing 用来描述函数类型。
@@ -31,7 +39,7 @@ class ResearchAgentOrchestrator:
     def __init__(self):
         # Agent映射表：RoleKey → AgentHandler异步函数
         # 新增智能体：只需要实现符合AgentHandler签名的入口函数，在这里增加一条映射，编排器主体无需改动
-        self._agent_handlers : dict[ROLE_KEY,AgentHandler] = {
+        self._agent_handlers : dict[ROLE_KEY,AgentHandler] = { # type: ignore
             "insight": invoke_insight_agent,
             "media": invoke_media_agent
         }
@@ -72,6 +80,13 @@ class ResearchAgentOrchestrator:
         :param query: 用户原始研究query
         """
         with route_logs_by_role(role):
+            # ---------- 任务刚启动，发送第一条进度事件 starting 0% ----------
+            self._publish_progress(
+                task_id,
+                role,
+                ProgressUpdate(status="starting", message="开始执行研究", progress_pct=0)
+            )
+
             try:
                 # 构造llm_client
                 llm = LLMClient.from_role(role)
@@ -80,8 +95,47 @@ class ResearchAgentOrchestrator:
                 # 调用agent
                 logger.info(f"{role}开始执行")
                 agent = self._agent_handlers[role]
-                await agent(task_id, query, role, llm, output_dir, None)
+                # 拆分语法：lambda update: self._publish_progress(task_id, role, update)
+                #    lambda：python 匿名函数关键字；
+                #    update：是这个匿名函数的【形参变量名】！！
+                #    名字叫update，完全是自定义起名，你改成xxx、pu都可以，只是变量名；
+                #    但是！调用这个 lambda 的时候，会把一个ProgressUpdate对象赋值给这个形参update。
+                #    :冒号后面：是这个 lambda 函数的函数体；
+                #    python
+                #    self._publish_progress(task_id, role, update)
+                #    调用静态方法_publish_progress，传 3 个实参：
+                #    task_id：来自外层 orchestrator 当前局部变量（闭包捕获）
+                #    role：来自外层 orchestrator 当前局部变量（闭包捕获）
+                #    update：就是 lambda 收到的那个入参，也就是 runtime 传过来的 ProgressUpdate 对象
+                await agent(task_id, query, role, llm, output_dir, lambda update: self._publish_progress(task_id, role, update)) # type: ignore
                 logger.info(f"{role}执行完毕")
+                publish_role_result(RoleResultEvent(task_id=task_id, role=role))
             except Exception as e:
                 logger.exception(f"{role}执行错误: {e}")
+                publish_role_error(
+                    RoleErrorEvent(task_id=task_id, role=role, error=str(exec))
+                )
                 raise e
+
+    @staticmethod
+    def _publish_progress(
+            task_id: str, role: ROLE_KEY, update: ProgressUpdate
+    ) -> None:
+        """发布指定研究角色的进度事件。
+        【ROLE_PROGRESS事件唯一收敛出口】
+        所有Agent Graph内部各个node上报的进度，全部回调到这里；
+        入参：ProgressUpdate（来自research_graph_runtime运行时封装）
+        动作：组装强类型RoleProgressEvent pydantic对象 → 调用publish_role_progress，投递事件总线。
+
+        注意：ProgressUpdate里面只有status/message/progress_pct；**不存在section_key**；
+        如果需要携带结构化章节，需要扩展ProgressUpdate结构，再同步扩展RoleProgressEvent模型；当前版本不做。
+        """
+        publish_role_progress(
+            RoleProgressEvent(
+                task_id=task_id,
+                role=role,
+                status=update.status,
+                message=update.message,
+                progress_pct=update.progress_pct
+            )
+        )

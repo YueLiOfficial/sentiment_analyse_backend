@@ -43,6 +43,7 @@ class SearchNode(ResearchNode):
         role = state["role"]
         role_info = ROLE_INFOS[role]
         logger.info(f"【{role_info.agent_name}】网页检索执行节点开始执行")
+        self.context.report_progress("searching", f"{role_info.agent_name} 开始执行公域信息搜索", 30)
 
         research_topic: str = state["query"]
         sections: list[MediaSectionState] = state["sections"]
@@ -79,6 +80,8 @@ class SearchNode(ResearchNode):
             section_queries.append(chapter_query_log) # ["","",""]
 
         logger.info(f"【{role_info.agent_name}】网页检索全部章节执行完成")
+
+        self.context.report_progress("searching", f"{role_info.agent_name} 执行公域信息搜索完成", 40)
         # LangGraph规范：只返回变更字段，框架合并state
         return {
             "section_evidence_records": section_evidence_records,  # [[],[],[],[],[]]

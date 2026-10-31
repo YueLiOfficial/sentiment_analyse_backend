@@ -49,7 +49,7 @@ class SearchPlanningNode(ResearchNode):
         role_info = ROLE_INFOS[role]
         research_topic = state["query"]
         logger.info(f"【{role_info.agent_name}】搜索规划节点开始执行，研究主题={research_topic}")
-
+        self.context.report_progress("planning", f"{role_info.agent_name} 开始规划公域搜索策略", 10)
         # 调用LLM结构化输出，完成搜索策略规划，自带Pydantic强校验
         plan_output = await self._generate_search_plan(research_topic)
 
@@ -68,6 +68,8 @@ class SearchPlanningNode(ResearchNode):
         ]
 
         logger.info(f"【{role_info.agent_name}】搜索规划完成，共生成{len(sections)}个章节搜索策略配置")
+
+        self.context.report_progress("planning", f"{role_info.agent_name} 公域搜索策略规划完成", 20)
         # LangGraph规范：只返回发生变更的字段
         return {"sections": sections}
 

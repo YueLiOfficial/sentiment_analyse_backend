@@ -3,8 +3,10 @@ from typing import Annotated
 from fastapi import Depends
 
 from app.services.config.config_service import ConfigService
+from app.services.lifecycle.lifecycle_service import AppLifecycleManager
 from app.services.report.report_service import ReportService
 from app.services.research.research_service import ResearchService
+from app.services.sse.research_progress_stream import ResearchProgressStream
 
 
 _config_service = ConfigService()
@@ -40,3 +42,18 @@ def get_report_service() -> ReportService:
     return _report_service
 
 ReportServiceDep = Annotated[ReportService, Depends(get_report_service)]
+
+_research_progress_stream = ResearchProgressStream()
+
+
+def get_research_progress_stream() -> ResearchProgressStream:
+    """提供全局研究进度 SSE 事件流单例"""
+    return _research_progress_stream
+
+
+_lifecycle_manager = AppLifecycleManager(_host_service,_research_progress_stream)
+
+
+def get_lifecycle_manager() -> AppLifecycleManager:
+    """提供全局生命周期管理器单例。"""
+    return _lifecycle_manager

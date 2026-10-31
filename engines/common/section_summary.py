@@ -61,6 +61,8 @@ class BaseSectionSummaryNode(ResearchNode):
         role_info = ROLE_INFOS[role]
         logger.info(f"{role_info.agent_name} 开始按游标取章节证据包生成章节正文。")
 
+        self.context.report_progress("summary", f"{role_info.agent_name} 开始生成章节摘要", 50)
+
         # 总结到第几个章节里 !  cursor 0-4
         cursor = state.get("cursor", 0)   # 取出当前游标，默认0
         # 章节信息列表 [章节1(key,title,body), 章节2, 章节3, 章节4, 章节5]
@@ -100,6 +102,7 @@ class BaseSectionSummaryNode(ResearchNode):
         publish_section_ready(state, section)
 
         logger.info(f"{role_info.agent_name} 按游标取章节证据包生成章节正文完成。")
+        self.context.report_progress("summary", f"{role_info.agent_name} 生成章节摘要完成", 60)
         # 返回：更新后的sections，游标+1，下一轮处理下一章
         return {"sections": sections, "cursor": cursor + 1}
 

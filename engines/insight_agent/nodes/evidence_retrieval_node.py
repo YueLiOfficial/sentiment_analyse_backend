@@ -45,7 +45,9 @@ class EvidenceRetrievalNode(ResearchNode):
         # 日志会输出到哪个文件: role有关系
 
         # 调用双通道检索服务
+        self.context.report_progress("searching", f"{role_info.agent_name} 开始执行私域信息搜索", 10)
         evidence_records = await InsightRetrievalService().retrieve_evidence(state["query"])
+        self.context.report_progress("searching", f"{role_info.agent_name} 执行私域信息搜索完成", 20)
         logger.info(f"{role_info.agent_name} 私域信息检索完成，原始召回数量:{len(evidence_records)}")
         # node节点尽量返回增量结果! 如果返回state,并发节点会出现更新异常!
         return {"retrieved_records": evidence_records}

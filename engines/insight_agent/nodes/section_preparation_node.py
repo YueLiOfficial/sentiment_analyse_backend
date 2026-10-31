@@ -34,7 +34,7 @@ class SectionPreparationNode(ResearchNode):
         role = state['role']
         role_info = ROLE_INFOS[role]
         logger.info(f"{role_info.agent_name} 开始初始化固定章节并为各章节选择、排序和截取证据。")
-
+        self.context.report_progress("planning", f"{role_info.agent_name} 开始固定章节与证据准备", 30)
         # 从Graph状态取出上游输出
         # {doc_id : EvidenceRecord}
         records_by_id: Mapping[str, EvidenceRecord] = state["records_by_id"]
@@ -70,7 +70,7 @@ class SectionPreparationNode(ResearchNode):
             f"{role_info.agent_name} 初始化章节完成，总章节数:{len(sections)}，"
             f"各章节证据数量：{[len(x) for x in section_evidence_records]}"
         )
-
+        self.context.report_progress("planning", f"{role_info.agent_name} 固定章节与证据准备完成", 40)
         return {
             "sections": sections,  # [SectionState(title,key,body),]
             "section_evidence_records": section_evidence_records, # [[ EvidenceRecord, ... 20], [EvidenceRecord, ...],[]]
